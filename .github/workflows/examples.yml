@@ -6,8 +6,10 @@ on:
       - 'main'
     paths:
       - '.github/workflows/examples.yml'
+      - 'examples/**/*.go'
       - 'examples/go.mod'
       - 'examples/go.sum'
+      - 'tutorials/**/*.go'
       - 'tutorials/go.mod'
       - 'tutorials/go.sum'
       - 'go.mod'
@@ -35,5 +37,3 @@ jobs:
           branch: main
           commit_user_name: actions-user
           commit_user_email: actions@github.com
-
-

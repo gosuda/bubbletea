@@ -29,13 +29,6 @@ jobs:
           go build ./...
       - name: Test with race detector and coverage
         run: go test -race -covermode=atomic -coverprofile=coverage.txt ./...
-      - name: Build and test examples
-        if: github.actor != 'dependabot[bot]'
-        working-directory: examples
-        run: |
-          go mod tidy
-          go build ./...
-          go test ./...
       - name: Vulnerability check
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
       - name: Lint
@@ -43,6 +36,19 @@ jobs:
         with:
           version: v2.9
           args: --config=.golangci.yml --timeout=10m ./...
+      - name: Set up Go for examples
+        if: github.actor != 'dependabot[bot]'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: examples/go.mod
+          cache-dependency-path: examples/go.sum
+      - name: Build and test examples
+        if: github.actor != 'dependabot[bot]'
+        working-directory: examples
+        run: |
+          go mod tidy
+          go build ./...
+          go test ./...
       - uses: codecov/codecov-action@v6
         with:
           files: ./coverage.txt

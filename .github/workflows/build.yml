@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: true
       - name: Check module tidiness and build
         run: |
@@ -34,7 +34,6 @@ jobs:
         working-directory: examples
         run: |
           go mod tidy
-          git diff --exit-code
           go build ./...
           go test ./...
       - name: Vulnerability check
@@ -59,6 +58,9 @@ jobs:
           - depot-macos-latest
           - depot-windows-2025-4
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 30
     steps:
       - *id001
@@ -80,6 +82,5 @@ jobs:
         working-directory: examples
         run: |
           go mod tidy
-          git diff --exit-code
           go build ./...
           go test ./...

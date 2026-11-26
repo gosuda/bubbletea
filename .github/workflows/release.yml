@@ -7,11 +7,11 @@ on:
 
 concurrency:
   group: goreleaser
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   goreleaser:
-    uses: charmbracelet/meta/.github/workflows/goreleaser.yml@main
+    uses: ./.github/workflows/release-shared.yml
     secrets:
       docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
       docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -27,3 +27,8 @@ jobs:
       discord_webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
       discord_webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write

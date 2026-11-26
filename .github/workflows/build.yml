@@ -1,20 +1,85 @@
 name: build
-on: [push, pull_request]
-
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+  schedule:
+    - cron: 23 4 * * 1
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
-    uses: charmbracelet/meta/.github/workflows/build.yml@main
-
-  build-go-mod:
-    uses: charmbracelet/meta/.github/workflows/build.yml@main
-    with:
-      go-version: ""
-      go-version-file: ./go.mod
-
-  build-examples:
-    if: github.actor != 'dependabot[bot]'
-    uses: charmbracelet/meta/.github/workflows/build.yml@main
-    with:
-      go-version: ""
-      go-version-file: ./examples/go.mod
-      working-directory: ./examples
+    name: Build, race tests, lint and examples
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 30
+    steps:
+      - &id001
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: stable
+          cache: true
+      - name: Check module tidiness and build
+        run: |
+          go mod tidy
+          git diff --exit-code
+          go build ./...
+      - name: Test with race detector and coverage
+        run: go test -race -covermode=atomic -coverprofile=coverage.txt ./...
+      - name: Build and test examples
+        if: github.actor != 'dependabot[bot]'
+        working-directory: examples
+        run: |
+          go mod tidy
+          git diff --exit-code
+          go build ./...
+          go test ./...
+      - name: Vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - name: Lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
+        with:
+          version: v2.9
+          args: --config=.golangci.yml --timeout=10m ./...
+      - uses: codecov/codecov-action@v6
+        with:
+          files: ./coverage.txt
+          token: ${{ secrets.CODECOV_TOKEN }}
+  compatibility:
+    name: Declared Go version (${{ matrix.os }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - depot-ubuntu-24.04-4
+          - depot-macos-latest
+          - depot-windows-2025-4
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - *id001
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and test declared Go version
+        run: |
+          go mod tidy
+          git diff --exit-code
+          go build ./...
+          go test ./...
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: examples/go.mod
+          cache-dependency-path: examples/go.sum
+      - name: Build and test examples
+        working-directory: examples
+        run: |
+          go mod tidy
+          git diff --exit-code
+          go build ./...
+          go test ./...
